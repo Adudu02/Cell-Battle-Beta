@@ -1,0 +1,6 @@
+{
+  "name": "Cell Battle",
+  "description": "A desktop web-app HUD mockup and simulation prototype for a local two-player strategy game.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
