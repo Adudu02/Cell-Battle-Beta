@@ -1,0 +1,17 @@
+services:
+  dev:
+    build: .
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+      - node_modules:/workspace/node_modules
+    ports:
+      - "5173:5173"
+      - "3000:3000"
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+    tty: true
+    stdin_open: true
+
+volumes:
+  node_modules:

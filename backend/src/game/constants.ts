@@ -1,0 +1,10 @@
+export const BOARD_ROWS = 100;
+export const BOARD_COLS = 200;
+export const DEFAULT_TURN_LIMIT = 5000;
+export const INITIAL_HEALTH = 100;
+export const INITIAL_AGE = 1;
+export const MAX_HEALTH = 100;
+export const REST_HEAL = 3;
+export const EAT_DAMAGE = 5;
+export const REPRODUCE_MIN_HEALTH = 50;
+export const REPRODUCE_MAX_AGE_EXCLUSIVE = 55;
