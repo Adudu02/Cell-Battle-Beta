@@ -386,7 +386,7 @@ export default function App() {
       </main>
 
       <footer className="border-t border-slate-850 px-6 py-2 bg-slate-950/40 text-[9px] font-mono text-slate-500 text-center flex flex-col sm:flex-row justify-between gap-1 items-center">
-        <span>LOCAL TWO-PLAYER CELL SIMULATION | BOARD 200 x 100 | SAFE STRATEGY SUBSET</span>
+        <span>LOCAL TWO-PLAYER CELL SIMULATION | BOARD 67 x 34 | 3x CELL SCALE | SAFE STRATEGY SUBSET</span>
         <span>
           MATCH CONFIG LOCKS ON PLAY: <span className="text-emerald-400">ENFORCED</span>
         </span>

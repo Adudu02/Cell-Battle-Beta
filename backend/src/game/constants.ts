@@ -1,5 +1,8 @@
-export const BOARD_ROWS = 100;
-export const BOARD_COLS = 200;
+export const SOURCE_BOARD_ROWS = 100;
+export const SOURCE_BOARD_COLS = 200;
+export const SIMULATION_CELL_SCALE = 3;
+export const BOARD_ROWS = Math.ceil(SOURCE_BOARD_ROWS / SIMULATION_CELL_SCALE);
+export const BOARD_COLS = Math.ceil(SOURCE_BOARD_COLS / SIMULATION_CELL_SCALE);
 export const DEFAULT_TURN_LIMIT = 5000;
 export const INITIAL_HEALTH = 100;
 export const INITIAL_AGE = 1;

@@ -22,7 +22,7 @@ Included:
 
 * Local web app.
 * Two local players.
-* Fixed 100x200 board.
+* Fixed 34x67 board, derived from a 3x reduction of the original 100x200 board target.
 * One initial cell per player.
 * Health.
 * Age.

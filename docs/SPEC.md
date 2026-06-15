@@ -21,7 +21,7 @@ Included:
 
 * Local web app.
 * Two local players.
-* Fixed 100 x 200 board.
+* Fixed 34 x 67 board, derived from the original 100 x 200 target at 3x cell scale.
 * One initial random cell per player.
 * Four actions: move, eat, reproduce, rest.
 * Turn execution ordering based on age and start-of-turn snapshot.
@@ -58,7 +58,8 @@ Excluded:
 
 ## Board Rules
 
-* Board size is fixed at 100 rows x 200 columns.
+* Board size is fixed at 34 rows x 67 columns.
+* This is a low-density board where one simulated square represents roughly a 3 x 3 block from the original target resolution.
 * Rows and columns are zero-based internally.
 * No square outside the board is valid.
 * No obstacles exist.

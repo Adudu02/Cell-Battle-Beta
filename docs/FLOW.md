@@ -42,7 +42,7 @@
 4. If both functions are valid:
 
    * lock match configuration,
-   * create 100x200 board,
+   * create 34x67 board,
    * create one random initial cell per player,
    * initialize turn = 1,
    * show board, current turn, and statistics.

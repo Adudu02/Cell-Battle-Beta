@@ -65,8 +65,8 @@ Response example:
     "currentTurn": 1,
     "config": {
       "turnLimit": 5000,
-      "boardRows": 100,
-      "boardCols": 200,
+      "boardRows": 34,
+      "boardCols": 67,
       "teams": []
     },
     "cells": [],

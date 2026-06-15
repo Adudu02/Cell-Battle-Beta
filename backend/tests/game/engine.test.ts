@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { advanceSimulation, createSimulationState, endSimulationEarly, runSimulationTurn, startMatch } from '../../src/game/engine.js';
+import { BOARD_COLS, BOARD_ROWS } from '../../src/game/constants.js';
 import { validateStrategy } from '../../src/game/validation.js';
 import type { Cell, PlayerDefinition } from '../../src/game/types.js';
 
@@ -178,6 +179,8 @@ describe('engine', () => {
     expect(started.errors).toEqual([]);
     expect(started.match?.locked).toBe(true);
     expect(started.match?.status).toBe('paused');
+    expect(started.match?.config.boardRows).toBe(BOARD_ROWS);
+    expect(started.match?.config.boardCols).toBe(BOARD_COLS);
   });
 
   it('can end a match early and score the current board immediately', () => {

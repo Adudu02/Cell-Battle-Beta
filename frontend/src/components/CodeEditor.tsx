@@ -206,7 +206,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
           CELL BATTLE
         </h1>
         <p className="text-xs md:text-sm text-slate-400 max-w-2xl mx-auto">
-          Validate two restricted Python-like strategies, lock the match, and run the full 100 x 200 simulation.
+          Validate two restricted Python-like strategies, lock the match, and run the 67 x 34 low-density simulation.
         </p>
       </div>
 

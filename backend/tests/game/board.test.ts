@@ -20,10 +20,10 @@ function makeCell(id: string, teamId: 1 | 2, row: number, col: number): Cell {
 }
 
 describe('board', () => {
-  it('creates a 100x200 board', () => {
-    const board = createBoard(100, 200);
-    expect(board.rows).toBe(100);
-    expect(board.cols).toBe(200);
+  it('creates a board with the requested dimensions', () => {
+    const board = createBoard(34, 67);
+    expect(board.rows).toBe(34);
+    expect(board.cols).toBe(67);
   });
 
   it('rejects positions outside the board', () => {

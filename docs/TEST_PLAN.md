@@ -16,7 +16,7 @@ Order of work:
 
 ### Board
 
-* creates a 100 x 200 board,
+* creates a 34 x 67 board,
 * rejects outside positions,
 * prevents more than one cell per square,
 * creates one initial cell per player,
