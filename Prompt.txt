@@ -1,0 +1,398 @@
+*You are an expert TypeScript web game developer.
+
+*Build a browser-based MVP web game called “Battle of Cells” using TypeScript. Use React + Vite for the frontend UI and keep the first version fully local in the browser. Do not implement online multiplayer, backend services, accounts, databases, or advanced gameplay.
+
+*The game must follow the uploaded Business Requirements PDF exactly.
+
+*Core game concept:
+Battle of Cells is a local two-player turn-based simulation. Each player controls a team/species of cells by writing a TypeScript-style function. Each living cell runs that team’s function once per turn to decide its action. The simulation starts only after both players configure their team, write their algorithm, validate it, and press Play.
+
+*Technology requirements:
+- Main language: TypeScript.
+- Frontend: React + Vite.
+- State management can be React state, Zustand, or another simple local state solution.
+- Styling can use CSS modules, plain CSS, Tailwind, or a simple modern responsive UI.
+- The app must run fully in the browser.
+- Save match configuration locally if useful, but do not require a backend.
+
+*Required screens:
+1. Configuration Screen
+   - Player 1 setup.
+   - Player 2 setup.
+   - Each player can enter:
+     - Team name.
+     - Team color from a predefined color scheme.
+     - Algorithm/function code.
+   - Show a code editor or textarea for each player.
+   - Include a “Validate Algorithm” button for each player.
+   - Show validation success or clear validation errors.
+   - Prevent starting the match unless:
+     - Both players exist.
+     - Team names are not duplicated.
+     - Both algorithms are valid.
+   - Include a Play button that starts the simulation.
+
+2. Simulation Screen
+   - Show the full 100 rows x 200 columns board.
+   - Render cells using their team color.
+   - Show current turn.
+   - Show turn limit.
+   - Show Play/Pause controls for automatic simulation.
+   - Show a Step Turn button if useful for debugging.
+   - Show an error panel for algorithm/runtime errors.
+   - Show basic statistics:
+     - Living cells per team.
+     - Total health per team.
+   - Once the match starts, lock the match:
+     - Code cannot be edited.
+     - Player names cannot be edited.
+     - Colors cannot be edited.
+     - Rules and initial conditions cannot be changed.
+   - Pause must only pause visualization/automatic execution. It must not unlock editing.
+
+3. Final Screen
+   - Show winner or draw.
+   - Show both player/team names.
+   - Show number of living cells per team.
+   - Show total health per team.
+   - Show final turn.
+   - Show cause of termination.
+   - Include a button to return to configuration and start a new match.
+
+*Game board rules:
+- The board size is fixed at 100 rows x 200 columns.
+- The board never changes size.
+- There are no obstacles, resources, food, or extra elements.
+- There can never be more than one cell on the same square.
+- Squares outside the board are invalid.
+- Display the full board in the interface.
+
+*Initial match setup:
+- Two local players only.
+- One initial cell per player.
+- Each cell starts alive.
+- Each cell has:
+  - Team name.
+  - Team color.
+  - Position.
+  - Health.
+  - Team ID.
+  - Alive/dead status.
+  - Turn of creation.
+  - Internal ID if needed for implementation.
+- Health ranges from 0 to 100.
+- A cell with 0 health is dead and removed from the board.
+
+*Actions:
+Each living cell may perform only one action per turn. The possible actions are:
+- Move.
+- Eat.
+- Reproduce.
+- Rest.
+
+*Valid directions:
+- North: n
+- South: s
+- East: e
+- West: w
+- Northeast: ne
+- Northwest: nw
+- Southeast: se
+- Southwest: sw
+
+*Important:
+Use the direction codes above consistently in the implementation. If the PDF has inconsistent Spanish-style direction letters such as “o”, “no”, or “so”, normalize them to English-friendly codes for code clarity:
+- west = w
+- northwest = nw
+- southwest = sw
+
+*Action return codes:
+Move:
+- "mn" = move north
+- "ms" = move south
+- "me" = move east
+- "mw" = move west
+- "mne" = move northeast
+- "mnw" = move northwest
+- "mse" = move southeast
+- "msw" = move southwest
+
+Eat:
+- "an" = eat north
+- "as" = eat south
+- "ae" = eat east
+- "aw" = eat west
+- "ane" = eat northeast
+- "anw" = eat northwest
+- "ase" = eat southeast
+- "asw" = eat southwest
+
+Reproduce:
+- "rn" = reproduce north
+- "rs" = reproduce south
+- "re" = reproduce east
+- "rw" = reproduce west
+- "rne" = reproduce northeast
+- "rnw" = reproduce northwest
+- "rse" = reproduce southeast
+- "rsw" = reproduce southwest
+
+Rest:
+- "d" = rest
+
+*Movement rules:
+- A cell moves one square per turn.
+- A cell can only move to an empty valid square.
+- Moving outside the board cancels the action and consumes the cell’s turn.
+- Moving into an occupied square cancels the action and consumes the cell’s turn.
+- Moving toward an enemy does not attack. To damage an enemy, the cell must use Eat.
+
+*Eat rules:
+- A cell can only eat enemy cells.
+- Eating range is one neighboring square.
+- Eating causes 5 damage.
+- Eating does not heal the attacker.
+- Eating does not give points.
+- If there is no enemy in the chosen direction, the action is canceled and the cell loses its action.
+- If the target reaches 0 health, it dies and is immediately removed from the board.
+
+*Reproduction rules:
+- A cell can reproduce only into an empty valid neighboring square.
+- The new cell belongs to the same team.
+- Reproduction consumes the original cell’s action.
+- The original cell’s current health is divided between original and new cell.
+- If health is even, both receive half.
+- If health is odd, the original keeps the extra point.
+  Example: 51 becomes 26 for the original cell and 25 for the new cell.
+- The total health between original and new cell must be preserved.
+- A newborn cell does not act on the same turn it was born. It can act starting the next turn.
+
+*Rest rules:
+- Rest consumes the cell’s action.
+- Rest recovers 3 health.
+- Health cannot exceed 100.
+- A cell may rest at 100 health, but it gains no extra health.
+
+*Turn system:
+- The global turn starts at 1.
+- The default turn limit is 5000.
+- Turn 5000 must be executed fully before evaluating final turn-limit victory.
+- Cells act one by one.
+- There are no simultaneous actions.
+- Actions update the board immediately.
+- If a cell dies before its action, it does not execute.
+- Newborn cells do not act until the next turn.
+- At the end of each turn, apply any aging rules if implemented.
+- For execution order, use a deterministic stable order:
+  1. Cells alive at the start of the turn.
+  2. Sort by creation turn.
+  3. Then by row at the start-of-turn snapshot.
+  4. Then by column at the start-of-turn snapshot.
+  5. Then by internal ID as final tiebreaker.
+
+*Data visible to user algorithms:
+The user function must receive only a safe context object with:
+- Current cell health.
+- Current cell position.
+- Total health of the team.
+- Current turn.
+- Board size.
+- Information about the 8 neighboring squares.
+- Presence of nearby allied cells.
+- Presence of nearby enemy cells.
+
+*Each neighbor state must be one of:
+- "empty"
+- "allied"
+- "enemy"
+- "outside"
+
+*The user algorithm must not access:
+- Full enemy list.
+- Internal game state.
+- Board mutation methods.
+- Health mutation methods.
+- Position mutation methods.
+- File access.
+- Network access.
+- Imports.
+- eval.
+- Function constructor.
+- Dangerous browser APIs.
+
+*Algorithm validation:
+Before the match starts, validate each player function.
+Validation must check:
+- Syntax is valid within the allowed TypeScript-style subset.
+- All returned actions are valid literal strings.
+- No loops are allowed in MVP:
+  - No for.
+  - No while.
+  - No do while.
+- No imports.
+- No eval.
+- No Function constructor.
+- No file/network access.
+- No dangerous APIs.
+- Function executes within 1 second.
+- Function runs with a test context without throwing errors.
+- Strategy quality is not validated.
+- Invalid functions cannot be saved or played.
+- Errors must appear clearly in a feedback/error panel.
+
+*Recommended safe implementation approach:
+- Do not directly execute arbitrary user code with unrestricted eval.
+- Implement a limited validator/parser for the MVP.
+- Prefer using a small interpreted subset:
+  - Function body.
+  - if / else.
+  - boolean expressions.
+  - comparisons.
+  - access to the provided context object.
+  - literal string returns only.
+- Reject anything outside the allowed subset.
+- Alternatively, isolate execution in a Web Worker with timeout, but still validate and restrict the AST first.
+
+*Victory/end conditions:
+The simulation ends when:
+- Only one team remains alive.
+- Both teams have no living cells at the same turn close.
+- The turn limit is reached after the last allowed turn fully executes.
+
+*Winner logic:
+- If only one team remains alive, that team wins.
+- If both teams have no living cells, it is a draw.
+- If the turn limit is reached:
+  1. Team with more living cells wins.
+  2. If tied, team with higher total health wins.
+  3. If still tied, the match is a draw.
+
+*UI/UX requirements:
+- Make the interface modern, clean, and game-like.
+- Use clear panels:
+  - Player setup.
+  - Code editor.
+  - Validation feedback.
+  - Board.
+  - Stats.
+  - Errors.
+  - Final results.
+- The 100 x 200 board is large, so render it efficiently.
+- Use CSS grid, canvas, or optimized DOM rendering.
+- Prefer canvas rendering if performance becomes an issue.
+- Cells should be visible using player colors.
+- Include legends for both teams.
+- Make buttons and state transitions clear:
+  - Validate.
+  - Play.
+  - Pause.
+  - Step.
+  - Reset/New Match.
+
+*Project structure:
+Create a clean structure similar to:
+
+src/
+  main.tsx
+  App.tsx
+  game/
+    types.ts
+    constants.ts
+    directions.ts
+    actions.ts
+    engine.ts
+    validation.ts
+    victory.ts
+    initialState.ts
+  components/
+    ConfigurationScreen.tsx
+    PlayerConfigPanel.tsx
+    CodeEditor.tsx
+    SimulationScreen.tsx
+    BoardCanvas.tsx
+    StatsPanel.tsx
+    ErrorPanel.tsx
+    FinalScreen.tsx
+  styles/
+    global.css
+
+*Implementation steps:
+1. Set up React + Vite + TypeScript.
+2. Define all core types:
+   - Player
+   - Cell
+   - BoardPosition
+   - Direction
+   - ActionCode
+   - NeighborState
+   - CellContext
+   - GameState
+   - MatchResult
+3. Implement board helpers:
+   - Position validation.
+   - Neighbor calculation.
+   - Occupancy lookup.
+   - Direction-to-delta mapping.
+4. Implement action resolution:
+   - Move.
+   - Eat.
+   - Reproduce.
+   - Rest.
+5. Implement turn execution.
+6. Implement algorithm validation.
+7. Implement configuration UI.
+8. Implement simulation UI.
+9. Implement final results UI.
+10. Add example player algorithms for testing.
+11. Test important edge cases:
+   - Moving outside board.
+   - Moving into occupied square.
+   - Eating empty square.
+   - Eating allied cell.
+   - Reproduction with even health.
+   - Reproduction with odd health.
+   - Newborn cells not acting immediately.
+   - Cell dying before its turn.
+   - Turn limit tie conditions.
+   - Locked match after Play.
+
+*Example user algorithm format:
+function decide(context) {
+  if (context.neighbors.east === "enemy") {
+    return "ae";
+  }
+
+  if (context.neighbors.north === "empty") {
+    return "mn";
+  }
+
+  return "d";
+}
+
+*Deliverables:
+- A working browser game MVP.
+- Clean TypeScript code.
+- Clear component structure.
+- No backend required.
+- Comments explaining the game engine.
+- A README with:
+  - How to install dependencies.
+  - How to run the project.
+  - Game rules.
+  - Valid action codes.
+  - Example algorithms.
+
+*Performance and stability requirements:
+- Do not render the 100 x 200 board using 20,000 React components.
+- Render the board with Canvas.
+- Keep the simulation engine separate from React.
+- Do not scan the entire board for every action.
+- Maintain an occupancy grid for O(1) position lookup.
+- Run user algorithms in a restricted sandbox or Web Worker.
+- Do not execute unrestricted user code on the main thread.
+- Treat the 1-second timeout as a validation/global safety timeout, not as a normal per-cell execution allowance.
+- Cap and aggregate runtime errors instead of logging unlimited errors.
+- Normalize direction codes to one consistent system.
+- Define aging clearly or disable it for the MVP.
+- Use a deterministic hidden internal ID for execution order.
+- Batch state updates by turn instead of updating React state after every cell action.
