@@ -13,7 +13,6 @@ import type {
   RuntimeErrorEntry,
   SimulationSnapshot,
   TeamId,
-  NeighborState,
   DirectionName,
 } from "./types";
 
@@ -26,9 +25,39 @@ function isInsideBoard(row: number, col: number): boolean {
 }
 
 const BOARD_SIZE = { rows: BOARD_ROWS, cols: BOARD_COLS } as const;
-const EMPTY_DIRECTIONS: DirectionName[] = [];
+const DIRECTION_NAMES: DirectionName[] = [
+  "north",
+  "south",
+  "east",
+  "west",
+  "northeast",
+  "northwest",
+  "southeast",
+  "southwest",
+];
 
-// No sort — just filter alive cells; sorting happens once in executeTurn
+function createReusableCellContext(): CellContext {
+  return {
+    position: { row: 0, col: 0 },
+    currentTurn: 0,
+    boardSize: BOARD_SIZE,
+    neighbors: {
+      north: "empty",
+      south: "empty",
+      east: "empty",
+      west: "empty",
+      northeast: "empty",
+      northwest: "empty",
+      southeast: "empty",
+      southwest: "empty",
+    },
+    nearbyAllies: [],
+    nearbyEnemies: [],
+    hasNearbyAllies: false,
+    hasNearbyEnemies: false,
+  };
+}
+
 function listCells(state: InternalGameState): Cell[] {
   const cells: Cell[] = [];
   for (const id of state.aliveCells) {
@@ -36,23 +65,6 @@ function listCells(state: InternalGameState): Cell[] {
     if (cell) cells.push(cell);
   }
   return cells;
-}
-
-function createTurnOrder(state: InternalGameState): number[] {
-  return listCells(state)
-    .map((cell) => ({
-      id: cell.id,
-      createdTurn: cell.createdTurn,
-      row: cell.position.row,
-      col: cell.position.col,
-    }))
-    .sort((a, b) => {
-      if (a.createdTurn !== b.createdTurn) return a.createdTurn - b.createdTurn;
-      if (a.row !== b.row) return a.row - b.row;
-      if (a.col !== b.col) return a.col - b.col;
-      return a.id - b.id;
-    })
-    .map((cell) => cell.id);
 }
 
 function flushBoardPatch(state: InternalGameState): {
@@ -71,12 +83,14 @@ function flushBoardPatch(state: InternalGameState): {
 }
 
 function toSnapshot(state: InternalGameState): SimulationSnapshot {
+  const boardPatch = flushBoardPatch(state);
+
   return {
     players: state.players,
     currentTurn: state.currentTurn,
     turnLimit: state.turnLimit,
-    cells: listCells(state),
-    boardPatch: flushBoardPatch(state),
+    cells: boardPatch.fullSync ? listCells(state) : undefined,
+    boardPatch,
     stats: {
       p1: { ...state.teamStats.p1 },
       p2: { ...state.teamStats.p2 },
@@ -125,69 +139,54 @@ function markBoardPositionDirty(
   });
 }
 
-// Reusable scratch buffer avoids per-call allocations
-const _nDir: DirectionName[] = ["north","south","east","west","northeast","northwest","southeast","southwest"];
-const _neighborOut: [DirectionName, NeighborState][] = [
-  ["north","empty"],["south","empty"],["east","empty"],["west","empty"],
-  ["northeast","empty"],["northwest","empty"],["southeast","empty"],["southwest","empty"],
-];
-const _nearbyAllies = new Array<DirectionName>(8);
-const _nearbyEnemies = new Array<DirectionName>(8);
+function buildCellContext(
+  state: InternalGameState,
+  cell: Cell,
+  context: CellContext,
+): CellContext {
+  context.position.row = cell.position.row;
+  context.position.col = cell.position.col;
+  context.currentTurn = state.currentTurn;
+  context.nearbyAllies.length = 0;
+  context.nearbyEnemies.length = 0;
 
-function buildCellContext(state: InternalGameState, cell: Cell): CellContext {
-  let allyCount = 0;
-  let enemyCount = 0;
-
-  for (let i = 0; i < 8; i++) {
-    const dirName = _nDir[i];
+  for (let i = 0; i < DIRECTION_NAMES.length; i += 1) {
+    const dirName = DIRECTION_NAMES[i];
     const delta = DIRECTION_DELTAS[DIRECTION_NAME_TO_CODE[dirName]];
     const tr = cell.position.row + delta.row;
     const tc = cell.position.col + delta.col;
 
     if (!isInsideBoard(tr, tc)) {
-      _neighborOut[i][1] = "outside";
+      context.neighbors[dirName] = "outside";
       continue;
     }
 
     const id = state.occupancy[boardIndex(tr, tc)];
     if (id === -1) {
-      _neighborOut[i][1] = "empty";
+      context.neighbors[dirName] = "empty";
     } else {
       const other = state.cellsById.get(id)!;
       if (other.teamId === cell.teamId) {
-        _neighborOut[i][1] = "allied";
-        _nearbyAllies[allyCount] = dirName;
-        allyCount += 1;
+        context.neighbors[dirName] = "allied";
+        context.nearbyAllies.push(dirName);
       } else {
-        _neighborOut[i][1] = "enemy";
-        _nearbyEnemies[enemyCount] = dirName;
-        enemyCount += 1;
+        context.neighbors[dirName] = "enemy";
+        context.nearbyEnemies.push(dirName);
       }
     }
   }
 
-  const neighbors = {
-    north: _neighborOut[0][1], south: _neighborOut[1][1],
-    east: _neighborOut[2][1], west: _neighborOut[3][1],
-    northeast: _neighborOut[4][1], northwest: _neighborOut[5][1],
-    southeast: _neighborOut[6][1], southwest: _neighborOut[7][1],
-  } as CellContext["neighbors"];
+  context.hasNearbyAllies = context.nearbyAllies.length > 0;
+  context.hasNearbyEnemies = context.nearbyEnemies.length > 0;
 
-  return {
-    position: cell.position,
-    currentTurn: state.currentTurn,
-    boardSize: BOARD_SIZE,
-    neighbors,
-    nearbyAllies: allyCount === 0 ? EMPTY_DIRECTIONS : _nearbyAllies.slice(0, allyCount),
-    nearbyEnemies: enemyCount === 0 ? EMPTY_DIRECTIONS : _nearbyEnemies.slice(0, enemyCount),
-    hasNearbyAllies: allyCount > 0,
-    hasNearbyEnemies: enemyCount > 0,
-  };
+  return context;
 }
 
 function removeCell(state: InternalGameState, cell: Cell): void {
   cell.alive = false;
   state.aliveCells.delete(cell.id);
+  state.cellsById.delete(cell.id);
+  state.dirtyCreatedTurns.add(cell.createdTurn);
   state.occupancy[boardIndex(cell.position.row, cell.position.col)] = -1;
   markBoardPositionDirty(state, cell.position.row, cell.position.col);
   state.teamStats[cell.teamId].livingCells -= 1;
@@ -197,10 +196,53 @@ function moveCell(state: InternalGameState, cell: Cell, row: number, col: number
   const previousRow = cell.position.row;
   const previousCol = cell.position.col;
   state.occupancy[boardIndex(cell.position.row, cell.position.col)] = -1;
-  cell.position = { row, col };
+  cell.position.row = row;
+  cell.position.col = col;
   state.occupancy[boardIndex(row, col)] = cell.id;
   markBoardPositionDirty(state, previousRow, previousCol);
   markBoardPositionDirty(state, row, col);
+}
+
+function compactDirtyTurnGroups(state: InternalGameState): void {
+  if (state.dirtyCreatedTurns.size === 0) {
+    return;
+  }
+
+  for (const createdTurn of state.dirtyCreatedTurns) {
+    const bucket = state.cellsByCreatedTurn.get(createdTurn);
+    if (!bucket) {
+      continue;
+    }
+
+    let writeIndex = 0;
+    for (let readIndex = 0; readIndex < bucket.length; readIndex += 1) {
+      const cellId = bucket[readIndex];
+      if (!state.cellsById.has(cellId)) {
+        continue;
+      }
+
+      bucket[writeIndex] = cellId;
+      writeIndex += 1;
+    }
+
+    bucket.length = writeIndex;
+    if (bucket.length === 0) {
+      state.cellsByCreatedTurn.delete(createdTurn);
+    }
+  }
+
+  let writeIndex = 0;
+  for (let readIndex = 0; readIndex < state.createdTurnGroups.length; readIndex += 1) {
+    const createdTurn = state.createdTurnGroups[readIndex];
+    if (!state.cellsByCreatedTurn.has(createdTurn)) {
+      continue;
+    }
+
+    state.createdTurnGroups[writeIndex] = createdTurn;
+    writeIndex += 1;
+  }
+  state.createdTurnGroups.length = writeIndex;
+  state.dirtyCreatedTurns.clear();
 }
 
 function reproduceCell(
@@ -271,28 +313,37 @@ function resolveAction(
 function executeTurn(
   state: InternalGameState,
   runners: Record<TeamId, AlgorithmRunner>,
+  reusableContext: CellContext,
 ): void {
-  const turnOrder = createTurnOrder(state);
+  const turnStartGroupLength = state.createdTurnGroups.length;
 
-  for (const cellId of turnOrder) {
-    const cell = state.cellsById.get(cellId);
-    if (!cell || !cell.alive) continue;
+  for (let groupIndex = turnStartGroupLength - 1; groupIndex >= 0; groupIndex -= 1) {
+    const createdTurn = state.createdTurnGroups[groupIndex];
+    const bucket = state.cellsByCreatedTurn.get(createdTurn);
+    if (!bucket) continue;
 
-    try {
-      const context = buildCellContext(state, cell);
-      const actionCode = runners[cell.teamId](context);
-      resolveAction(state, cell, parseActionCode(actionCode));
-    } catch (error) {
-      recordError(state, {
-        turn: state.currentTurn,
-        teamId: cell.teamId,
-        teamName: cell.teamName,
-        cellId: cell.id,
-        message: error instanceof Error ? error.message : "Unknown runtime error.",
-      });
+    for (let i = 0; i < bucket.length; i += 1) {
+      const cellId = bucket[i];
+      const cell = state.cellsById.get(cellId);
+      if (!cell || !cell.alive) continue;
+
+      try {
+        const context = buildCellContext(state, cell, reusableContext);
+        const actionCode = runners[cell.teamId](context);
+        resolveAction(state, cell, parseActionCode(actionCode));
+      } catch (error) {
+        recordError(state, {
+          turn: state.currentTurn,
+          teamId: cell.teamId,
+          teamName: cell.teamName,
+          cellId: cell.id,
+          message: error instanceof Error ? error.message : "Unknown runtime error.",
+        });
+      }
     }
   }
 
+  compactDirtyTurnGroups(state);
   state.result = evaluateVictory(state);
   if (!state.result) {
     state.currentTurn += 1;
@@ -310,16 +361,18 @@ export function createEngineFromState(
   state: InternalGameState,
   runners: Record<TeamId, AlgorithmRunner>,
 ): EngineController {
+  const reusableContext = createReusableCellContext();
+
   return {
     getSnapshot() { return toSnapshot(state); },
     stepTurn() {
-      if (!state.result) executeTurn(state, runners);
+      if (!state.result) executeTurn(state, runners, reusableContext);
       return toSnapshot(state);
     },
     stepTurns(maxTurns) {
       let turns = 0;
       while (!state.result && turns < maxTurns) {
-        executeTurn(state, runners);
+        executeTurn(state, runners, reusableContext);
         turns += 1;
       }
       return toSnapshot(state);

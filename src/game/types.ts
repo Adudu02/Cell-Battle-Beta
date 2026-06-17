@@ -137,7 +137,7 @@ export interface SimulationSnapshot {
   players: Record<TeamId, PlayerConfig>;
   currentTurn: number;
   turnLimit: number;
-  cells: Cell[];
+  cells?: Cell[];
   boardPatch: BoardPatch;
   stats: Record<TeamId, TeamStats>;
   errors: RuntimeErrorEntry[];

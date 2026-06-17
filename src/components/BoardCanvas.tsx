@@ -2,13 +2,15 @@ import { useEffect, useRef } from "react";
 import type { BoardPatch, Cell } from "../game/types";
 
 interface BoardCanvasProps {
-  cells: Cell[];
+  cells?: Cell[];
   boardPatch: BoardPatch;
 }
 
 const CANVAS_WIDTH = 1200;
 const CANVAS_HEIGHT = 600;
 const CELL_SIZE = 6;
+const BOARD_BACKGROUND = "#08111a";
+const GRID_STROKE = "rgba(145, 170, 190, 0.05)";
 
 function configureCanvas(canvas: HTMLCanvasElement, dpr: number): CanvasRenderingContext2D | null {
   canvas.width = CANVAS_WIDTH * dpr;
@@ -24,10 +26,10 @@ function configureCanvas(canvas: HTMLCanvasElement, dpr: number): CanvasRenderin
 
 function drawGrid(context: CanvasRenderingContext2D): void {
   context.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-  context.fillStyle = "#050a10";
+  context.fillStyle = BOARD_BACKGROUND;
   context.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-  context.strokeStyle = "rgba(145, 170, 190, 0.12)";
+  context.strokeStyle = GRID_STROKE;
   context.lineWidth = 1;
 
   for (let x = 0; x <= CANVAS_WIDTH; x += CELL_SIZE) {
@@ -61,10 +63,10 @@ function drawBoardCell(
 ): void {
   context.fillStyle = color;
   context.fillRect(
-    col * CELL_SIZE + 1,
-    row * CELL_SIZE + 1,
-    CELL_SIZE - 2,
-    CELL_SIZE - 2,
+    col * CELL_SIZE,
+    row * CELL_SIZE,
+    CELL_SIZE,
+    CELL_SIZE,
   );
 }
 
@@ -102,7 +104,7 @@ export function BoardCanvas({ cells, boardPatch }: BoardCanvasProps) {
     // Full sync repaints only the dynamic layer; later turns patch changed squares.
     if (!initializedRef.current || boardPatch.fullSync) {
       cellsContext.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-      for (const cell of cells) {
+      for (const cell of cells ?? []) {
         drawBoardCell(
           cellsContext,
           cell.position.row,

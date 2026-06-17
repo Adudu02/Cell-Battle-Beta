@@ -57,7 +57,7 @@ export function ConfigurationScreen({
               </div>
               <div>
                 <dt>Turn Order</dt>
-                <dd>Newest cells act first. Ties are decided by lower internal id.</dd>
+                <dd>Newer cells act first. Ties are decided by lower internal id.</dd>
               </div>
               <div>
                 <dt>Validation</dt>

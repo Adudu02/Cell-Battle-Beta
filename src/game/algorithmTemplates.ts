@@ -62,17 +62,8 @@ export const ALGORITHM_TEMPLATES: AlgorithmTemplate[] = [
   {
     id: "stress",
     label: "Stress",
-    description: "Aggressive reproduction for load testing, then attack once expansion is blocked.",
+    description: "Attack first and rotate expansion lanes to keep load tests dense.",
     source: `function decide(context) {
-  if (context.neighbors.east === "empty") return "re";
-  if (context.neighbors.south === "empty") return "rs";
-  if (context.neighbors.west === "empty") return "rw";
-  if (context.neighbors.north === "empty") return "rn";
-  if (context.neighbors.southeast === "empty") return "rse";
-  if (context.neighbors.southwest === "empty") return "rsw";
-  if (context.neighbors.northeast === "empty") return "rne";
-  if (context.neighbors.northwest === "empty") return "rnw";
-
   if (context.neighbors.east === "enemy") return "ae";
   if (context.neighbors.west === "enemy") return "aw";
   if (context.neighbors.north === "enemy") return "an";
@@ -81,6 +72,50 @@ export const ALGORITHM_TEMPLATES: AlgorithmTemplate[] = [
   if (context.neighbors.northwest === "enemy") return "anw";
   if (context.neighbors.southeast === "enemy") return "ase";
   if (context.neighbors.southwest === "enemy") return "asw";
+
+  const phase = (context.position.row + context.position.col + context.currentTurn) % 4;
+
+  if (phase === 0) {
+    if (context.neighbors.east === "empty") return "re";
+    if (context.neighbors.south === "empty") return "rs";
+    if (context.neighbors.west === "empty") return "rw";
+    if (context.neighbors.north === "empty") return "rn";
+    if (context.neighbors.southeast === "empty") return "rse";
+    if (context.neighbors.southwest === "empty") return "rsw";
+    if (context.neighbors.northeast === "empty") return "rne";
+    if (context.neighbors.northwest === "empty") return "rnw";
+  }
+
+  if (phase === 1) {
+    if (context.neighbors.south === "empty") return "rs";
+    if (context.neighbors.west === "empty") return "rw";
+    if (context.neighbors.north === "empty") return "rn";
+    if (context.neighbors.east === "empty") return "re";
+    if (context.neighbors.southwest === "empty") return "rsw";
+    if (context.neighbors.northwest === "empty") return "rnw";
+    if (context.neighbors.northeast === "empty") return "rne";
+    if (context.neighbors.southeast === "empty") return "rse";
+  }
+
+  if (phase === 2) {
+    if (context.neighbors.west === "empty") return "rw";
+    if (context.neighbors.north === "empty") return "rn";
+    if (context.neighbors.east === "empty") return "re";
+    if (context.neighbors.south === "empty") return "rs";
+    if (context.neighbors.northwest === "empty") return "rnw";
+    if (context.neighbors.northeast === "empty") return "rne";
+    if (context.neighbors.southeast === "empty") return "rse";
+    if (context.neighbors.southwest === "empty") return "rsw";
+  }
+
+  if (context.neighbors.north === "empty") return "rn";
+  if (context.neighbors.east === "empty") return "re";
+  if (context.neighbors.south === "empty") return "rs";
+  if (context.neighbors.west === "empty") return "rw";
+  if (context.neighbors.northeast === "empty") return "rne";
+  if (context.neighbors.southeast === "empty") return "rse";
+  if (context.neighbors.southwest === "empty") return "rsw";
+  if (context.neighbors.northwest === "empty") return "rnw";
 
   return "me";
 }`,

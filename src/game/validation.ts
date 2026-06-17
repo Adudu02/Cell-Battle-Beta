@@ -111,7 +111,10 @@ function isPropertyNameIdentifier(node: ts.Identifier): boolean {
   );
 }
 
-function buildRunnerFromSource(normalizedSource: string): AlgorithmRunner {
+function buildRunnerFromSource(
+  normalizedSource: string,
+  freezeContext: boolean,
+): AlgorithmRunner {
   const transpiled = ts.transpileModule(normalizedSource, {
     compilerOptions: {
       target: ts.ScriptTarget.ES2020,
@@ -151,7 +154,9 @@ return decide;
   const decide = factory() as (context: CellContext) => unknown;
 
   return (context: CellContext) => {
-    const action = decide(deepFreeze(cloneContext(context)));
+    const action = decide(
+      freezeContext ? deepFreeze(cloneContext(context)) : context,
+    );
     if (typeof action !== "string" || !ACTION_SET.has(action as ActionCode)) {
       throw new Error("Algorithm returned an invalid action code.");
     }
@@ -355,7 +360,7 @@ function runStructuralValidation(normalizedSource: string): string[] {
 }
 
 function probeAlgorithmExecution(normalizedSource: string): void {
-  const runner = buildRunnerFromSource(normalizedSource);
+  const runner = buildRunnerFromSource(normalizedSource, true);
   const action = runner(SAMPLE_CONTEXT);
   if (!ACTION_SET.has(action)) {
     throw new Error("Algorithm returned an invalid action code.");
@@ -444,5 +449,5 @@ export function createAlgorithmRunner(source: string): AlgorithmRunner {
     throw new Error(diagnostics[0]);
   }
 
-  return buildRunnerFromSource(normalizedSource);
+  return buildRunnerFromSource(normalizedSource, false);
 }

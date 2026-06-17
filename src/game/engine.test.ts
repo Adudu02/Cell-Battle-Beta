@@ -42,14 +42,14 @@ describe("combat resolution", () => {
     };
 
     const snapshot = createEngineFromState(state, runners).stepTurn();
-    const movedAttacker = snapshot.cells.find((cell) => cell.id === p1.id)!;
+    const movedAttacker = snapshot.cells!.find((cell) => cell.id === p1.id)!;
 
     expect(snapshot.stats.p2.livingCells).toBe(0);
     expect(movedAttacker.position).toEqual({ row: 12, col: 13 });
     expect(snapshot.result?.winnerTeamId).toBe("p1");
   });
 
-  test("oldest created cell acts first when both have actions queued", () => {
+  test("newest created cell acts first when both have actions queued", () => {
     const state = createInitialState(createPlayers(), () => 0.5);
     const p1 = state.cellsById.get(1)!;
     const p2 = state.cellsById.get(2)!;
@@ -76,15 +76,15 @@ describe("combat resolution", () => {
 
     const snapshot = createEngineFromState(state, runners).stepTurn();
 
-    expect(snapshot.stats.p1.livingCells).toBe(1);
-    expect(snapshot.stats.p2.livingCells).toBe(0);
-    expect(snapshot.cells.find((cell) => cell.id === p1.id)?.position).toEqual({
+    expect(snapshot.stats.p1.livingCells).toBe(0);
+    expect(snapshot.stats.p2.livingCells).toBe(1);
+    expect(snapshot.cells!.find((cell) => cell.id === p2.id)?.position).toEqual({
       row: 20,
-      col: 21,
+      col: 20,
     });
   });
 
-  test("column order breaks ties before internal id", () => {
+  test("lower id breaks ties when creation turn matches", () => {
     const state = createInitialState(createPlayers(), () => 0.5);
     const p1 = state.cellsById.get(1)!;
     const p2 = state.cellsById.get(2)!;
@@ -108,11 +108,11 @@ describe("combat resolution", () => {
 
     const snapshot = createEngineFromState(state, runners).stepTurn();
 
-    expect(snapshot.stats.p1.livingCells).toBe(0);
-    expect(snapshot.stats.p2.livingCells).toBe(1);
-    expect(snapshot.cells.find((cell) => cell.id === p2.id)?.position).toEqual({
+    expect(snapshot.stats.p1.livingCells).toBe(1);
+    expect(snapshot.stats.p2.livingCells).toBe(0);
+    expect(snapshot.cells!.find((cell) => cell.id === p1.id)?.position).toEqual({
       row: 18,
-      col: 19,
+      col: 18,
     });
   });
 
@@ -148,10 +148,53 @@ describe("combat resolution", () => {
     expect(snapshot.result?.winnerTeamId).toBe("p1");
     expect(snapshot.result?.cause).toContain("Match ended manually");
   });
+
+  test("dead cells are pruned from state after combat resolves", () => {
+    const state = createInitialState(createPlayers(), () => 0.5);
+    const p1 = state.cellsById.get(1)!;
+    const p2 = state.cellsById.get(2)!;
+
+    state.occupancy[p1.position.row * 200 + p1.position.col] = -1;
+    state.occupancy[p2.position.row * 200 + p2.position.col] = -1;
+
+    p1.position = { row: 15, col: 15 };
+    p2.position = { row: 15, col: 16 };
+    state.occupancy[15 * 200 + 15] = p1.id;
+    state.occupancy[15 * 200 + 16] = p2.id;
+
+    const runners: Record<TeamId, AlgorithmRunner> = {
+      p1: () => "ae",
+      p2: () => "aw",
+    };
+
+    createEngineFromState(state, runners).stepTurn();
+
+    expect(state.cellsById.has(p2.id)).toBe(false);
+    expect(state.cellsByCreatedTurn.get(0)).toEqual([p1.id]);
+    expect(state.createdTurnGroups).toEqual([0]);
+    expect(state.aliveCells.size).toBe(1);
+  });
+
+  test("incremental snapshots skip full cell arrays after initialization", () => {
+    const state = createInitialState(createPlayers(), () => 0.5);
+    const runners: Record<TeamId, AlgorithmRunner> = {
+      p1: () => "re",
+      p2: () => "rw",
+    };
+
+    const engine = createEngineFromState(state, runners);
+    const initialSnapshot = engine.getSnapshot();
+    const nextSnapshot = engine.stepTurn();
+
+    expect(initialSnapshot.boardPatch.fullSync).toBe(true);
+    expect(initialSnapshot.cells?.length).toBe(2);
+    expect(nextSnapshot.boardPatch.fullSync).toBe(false);
+    expect(nextSnapshot.cells).toBeUndefined();
+  });
 });
 
 describe("algorithm templates", () => {
-  test("stress template attacks once there is no empty reproduction square", () => {
+  test("stress template attacks before further expansion", () => {
     const stressTemplate = ALGORITHM_TEMPLATES.find((template) => template.id === "stress");
     expect(stressTemplate).toBeDefined();
 
@@ -179,6 +222,34 @@ describe("algorithm templates", () => {
     expect(action).toBe("ae");
   });
 
+  test("stress template still attacks when empties remain nearby", () => {
+    const stressTemplate = ALGORITHM_TEMPLATES.find((template) => template.id === "stress");
+    expect(stressTemplate).toBeDefined();
+
+    const runner = createAlgorithmRunner(stressTemplate!.source);
+    const action = runner({
+      position: { row: 50, col: 50 },
+      currentTurn: 120,
+      boardSize: { rows: 100, cols: 200 },
+      neighbors: {
+        north: "empty",
+        south: "empty",
+        east: "enemy",
+        west: "empty",
+        northeast: "empty",
+        northwest: "allied",
+        southeast: "empty",
+        southwest: "allied",
+      },
+      nearbyAllies: ["northwest", "southwest"],
+      nearbyEnemies: ["east"],
+      hasNearbyAllies: true,
+      hasNearbyEnemies: true,
+    });
+
+    expect(action).toBe("ae");
+  });
+
   test("stress template match runs for repeated turns without runtime errors", () => {
     const stressTemplate = ALGORITHM_TEMPLATES.find((template) => template.id === "stress");
     expect(stressTemplate).toBeDefined();
@@ -194,5 +265,22 @@ describe("algorithm templates", () => {
     expect(snapshot.currentTurn).toBeGreaterThan(20);
     expect(snapshot.errors).toEqual([]);
     expect(snapshot.stats.p1.livingCells + snapshot.stats.p2.livingCells).toBeGreaterThan(2);
+  });
+
+  test("stress match keeps state maps aligned with living cells", () => {
+    const stressTemplate = ALGORITHM_TEMPLATES.find((template) => template.id === "stress");
+    expect(stressTemplate).toBeDefined();
+
+    const state = createInitialState(createPlayers(), () => 0.5);
+    const runners: Record<TeamId, AlgorithmRunner> = {
+      p1: createAlgorithmRunner(stressTemplate!.source),
+      p2: createAlgorithmRunner(stressTemplate!.source),
+    };
+
+    createEngineFromState(state, runners).stepTurns(32);
+
+    const livingCells = state.teamStats.p1.livingCells + state.teamStats.p2.livingCells;
+    expect(state.cellsById.size).toBe(livingCells);
+    expect(state.aliveCells.size).toBe(livingCells);
   });
 });

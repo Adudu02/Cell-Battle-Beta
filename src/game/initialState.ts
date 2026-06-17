@@ -23,6 +23,7 @@ export interface InternalGameState {
   nextCellId: number;
   pendingBoardChanges: Map<number, BoardCellPatch>;
   boardFullSyncPending: boolean;
+  dirtyCreatedTurns: Set<number>;
   errors: {
     turn: number;
     teamId: TeamId;
@@ -113,6 +114,7 @@ export function createInitialState(
     nextCellId: 3,
     pendingBoardChanges: new Map(),
     boardFullSyncPending: true,
+    dirtyCreatedTurns: new Set(),
     errors: [],
     errorOverflowed: false,
     result: null,
