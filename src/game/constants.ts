@@ -2,11 +2,7 @@ import type { ActionCode, TeamId } from "./types";
 
 export const BOARD_ROWS = 100;
 export const BOARD_COLS = 200;
-export const DEFAULT_TURN_LIMIT = 500;
-export const MAX_HEALTH = 100;
-export const INITIAL_HEALTH = 60;
-export const REST_HEAL = 3;
-export const EAT_DAMAGE = 5;
+export const DEFAULT_TURN_LIMIT = 5000;
 export const MAX_RUNTIME_ERRORS = 24;
 
 export const TEAM_COLORS = [
@@ -40,7 +36,7 @@ export const TEAM_DEFAULTS: Record<
     return "me";
   }
 
-  return "d";
+  return "mn";
 }`,
   },
   p2: {
@@ -52,14 +48,14 @@ export const TEAM_DEFAULTS: Record<
   }
 
   if (context.hasNearbyEnemies) {
-    return "d";
+    return "aw";
   }
 
   if (context.neighbors.west === "empty") {
     return "mw";
   }
 
-  return "d";
+  return "ms";
 }`,
   },
 };
@@ -89,5 +85,4 @@ export const ACTION_CODES: readonly ActionCode[] = [
   "rnw",
   "rse",
   "rsw",
-  "d",
 ] as const;

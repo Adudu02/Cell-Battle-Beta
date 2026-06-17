@@ -44,10 +44,9 @@ export type ActionCode =
   | "rne"
   | "rnw"
   | "rse"
-  | "rsw"
-  | "d";
+  | "rsw";
 
-export type ActionKind = "move" | "eat" | "reproduce" | "rest";
+export type ActionKind = "move" | "eat" | "reproduce";
 
 export type NeighborState = "empty" | "allied" | "enemy" | "outside";
 
@@ -62,7 +61,6 @@ export interface Cell {
   teamName: string;
   teamColor: string;
   position: BoardPosition;
-  health: number;
   alive: boolean;
   createdTurn: number;
 }
@@ -89,9 +87,7 @@ export interface PlayerDraft extends PlayerConfig {
 }
 
 export interface CellContext {
-  health: number;
   position: BoardPosition;
-  teamTotalHealth: number;
   currentTurn: number;
   boardSize: {
     rows: number;
@@ -106,7 +102,17 @@ export interface CellContext {
 
 export interface TeamStats {
   livingCells: number;
-  totalHealth: number;
+}
+
+export interface BoardCellPatch {
+  row: number;
+  col: number;
+  color: string | null;
+}
+
+export interface BoardPatch {
+  fullSync: boolean;
+  changes: BoardCellPatch[];
 }
 
 export interface RuntimeErrorEntry {
@@ -123,9 +129,8 @@ export interface MatchResult {
   isDraw: boolean;
   finalTurn: number;
   cause: string;
-  termination: "one-team-remaining" | "mutual-elimination" | "turn-limit";
+  termination: "one-team-remaining" | "mutual-elimination" | "turn-limit" | "manual";
   livingCellsByTeam: Record<TeamId, number>;
-  totalHealthByTeam: Record<TeamId, number>;
 }
 
 export interface SimulationSnapshot {
@@ -133,6 +138,7 @@ export interface SimulationSnapshot {
   currentTurn: number;
   turnLimit: number;
   cells: Cell[];
+  boardPatch: BoardPatch;
   stats: Record<TeamId, TeamStats>;
   errors: RuntimeErrorEntry[];
   result: MatchResult | null;
@@ -143,5 +149,7 @@ export type AlgorithmRunner = (context: CellContext) => ActionCode;
 export interface EngineController {
   getSnapshot(): SimulationSnapshot;
   stepTurn(): SimulationSnapshot;
+  stepTurns(maxTurns: number): SimulationSnapshot;
+  endMatch(): SimulationSnapshot;
   isFinished(): boolean;
 }

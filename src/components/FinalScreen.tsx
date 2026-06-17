@@ -38,10 +38,6 @@ export function FinalScreen({ snapshot, onNewMatch }: FinalScreenProps) {
                   <dt>Living Cells</dt>
                   <dd>{result.livingCellsByTeam[teamId].toLocaleString()}</dd>
                 </div>
-                <div>
-                  <dt>Total Health</dt>
-                  <dd>{result.totalHealthByTeam[teamId].toLocaleString()}</dd>
-                </div>
               </dl>
             </article>
           ))}

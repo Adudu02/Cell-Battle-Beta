@@ -1,5 +1,4 @@
 import {
-  startTransition,
   useEffect,
   useEffectEvent,
   useRef,
@@ -19,7 +18,9 @@ import type {
 } from "./game/types";
 import { createAlgorithmRunner, validateAlgorithm } from "./game/validation";
 
-const STORAGE_KEY = "battle-of-cells/config/v1";
+const STORAGE_KEY = "battle-of-cells/config/v2";
+const AUTOPLAY_TURNS_PER_SECOND = 30;
+const AUTOPLAY_TURN_INTERVAL_MS = 1000 / AUTOPLAY_TURNS_PER_SECOND;
 
 type Screen = "configuration" | "simulation" | "final";
 
@@ -62,9 +63,19 @@ function loadStoredPlayers(): Record<TeamId, PlayerDraft> {
 
   try {
     const parsed = JSON.parse(raw) as Record<TeamId, PlayerDraft>;
+    const defaults = createDefaultPlayers();
+
     return {
-      p1: { ...createDefaultPlayers().p1, ...parsed.p1 },
-      p2: { ...createDefaultPlayers().p2, ...parsed.p2 },
+      p1: {
+        ...defaults.p1,
+        ...parsed.p1,
+        validation: defaults.p1.validation,
+      },
+      p2: {
+        ...defaults.p2,
+        ...parsed.p2,
+        validation: defaults.p2.validation,
+      },
     };
   } catch {
     return createDefaultPlayers();
@@ -88,8 +99,10 @@ export default function App() {
   );
   const [simulation, setSimulation] = useState<SimulationSnapshot | null>(null);
   const [isAutoPlaying, setIsAutoPlaying] = useState(false);
-  const [speedMs, setSpeedMs] = useState(140);
   const engineRef = useRef<EngineController | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const autoplayCarryMsRef = useRef(0);
+  const lastFrameTimeRef = useRef<number | null>(null);
 
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(players));
@@ -231,47 +244,83 @@ export default function App() {
     }
   };
 
-  const advanceTurn = useEffectEvent(() => {
+  const commitSimulation = useEffectEvent((nextSnapshot: SimulationSnapshot) => {
+    setSimulation(nextSnapshot);
+    if (nextSnapshot.result) {
+      setIsAutoPlaying(false);
+      setScreen("final");
+      return;
+    }
+    setScreen("simulation");
+  });
+
+  const advanceTurns = useEffectEvent((turnCount: number) => {
     const engine = engineRef.current;
     if (!engine) {
       return;
     }
 
-    const nextSnapshot = engine.stepTurn();
-    startTransition(() => {
-      setSimulation(nextSnapshot);
-      if (nextSnapshot.result) {
-        setIsAutoPlaying(false);
-        setScreen("final");
-      }
-    });
+    const nextSnapshot = turnCount === 1
+      ? engine.stepTurn()
+      : engine.stepTurns(turnCount);
+    commitSimulation(nextSnapshot);
   });
 
-useEffect(() => {
-  if (!isAutoPlaying || screen !== "simulation") return;
-
-  const handle = window.setInterval(() => {
+  const endMatch = useEffectEvent(() => {
     const engine = engineRef.current;
-    if (!engine || engine.isFinished()) return;
+    if (!engine) {
+      return;
+    }
 
-    let snapshot: SimulationSnapshot;
-    let batch = 0;
-    do {
-      snapshot = engine.stepTurn();
-      batch++;
-    } while (!snapshot.result && batch < 3);
+    commitSimulation(engine.endMatch());
+  });
 
-    startTransition(() => {
-      setSimulation(snapshot);
-      if (snapshot.result) {
-        setIsAutoPlaying(false);
-        setScreen("final");
+  useEffect(() => {
+    if (!isAutoPlaying || screen !== "simulation") {
+      if (animationFrameRef.current !== null) {
+        window.cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
       }
-    });
-  }, speedMs);
+      autoplayCarryMsRef.current = 0;
+      lastFrameTimeRef.current = null;
+      return;
+    }
 
-  return () => window.clearInterval(handle);
-}, [advanceTurn, isAutoPlaying, screen, speedMs]);
+    const tick = (timestamp: number) => {
+      const engine = engineRef.current;
+      if (!engine || engine.isFinished()) {
+        animationFrameRef.current = null;
+        return;
+      }
+
+      const lastTimestamp = lastFrameTimeRef.current ?? timestamp;
+      lastFrameTimeRef.current = timestamp;
+      autoplayCarryMsRef.current += timestamp - lastTimestamp;
+
+      let turnsToAdvance = 0;
+      if (autoplayCarryMsRef.current >= AUTOPLAY_TURN_INTERVAL_MS) {
+        autoplayCarryMsRef.current -= AUTOPLAY_TURN_INTERVAL_MS;
+        turnsToAdvance = 1;
+      }
+
+      if (turnsToAdvance > 0) {
+        advanceTurns(turnsToAdvance);
+      }
+
+      animationFrameRef.current = window.requestAnimationFrame(tick);
+    };
+
+    animationFrameRef.current = window.requestAnimationFrame(tick);
+
+    return () => {
+      if (animationFrameRef.current !== null) {
+        window.cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+      autoplayCarryMsRef.current = 0;
+      lastFrameTimeRef.current = null;
+    };
+  }, [isAutoPlaying, screen]);
 
   const resetMatch = () => {
     engineRef.current = null;
@@ -296,14 +345,16 @@ useEffect(() => {
         <SimulationScreen
           snapshot={simulation}
           isAutoPlaying={isAutoPlaying}
-          speedMs={speedMs}
           onPause={() => setIsAutoPlaying(false)}
           onPlay={() => setIsAutoPlaying(true)}
           onStepTurn={() => {
             setIsAutoPlaying(false);
-            advanceTurn();
+            advanceTurns(1);
           }}
-          onSpeedChange={setSpeedMs}
+          onEndMatch={() => {
+            setIsAutoPlaying(false);
+            endMatch();
+          }}
         />
       )}
       {screen === "final" && simulation && simulation.result && (

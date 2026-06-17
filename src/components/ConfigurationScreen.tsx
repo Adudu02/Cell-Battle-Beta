@@ -45,15 +45,19 @@ export function ConfigurationScreen({
             <dl className="rules-list">
               <div>
                 <dt>Board</dt>
-                <dd>100 x 200 fixed grid rendered in full.</dd>
+                <dd>100 x 200 fixed grid rendered in full with randomized starting spawns.</dd>
               </div>
               <div>
                 <dt>Actions</dt>
-                <dd>Move, eat, reproduce, or rest once per turn.</dd>
+                <dd>Move, attack, or reproduce once per turn. Every attack is an instant elimination.</dd>
               </div>
               <div>
                 <dt>Turn Limit</dt>
-                <dd>500 turns, resolved after the full last turn executes.</dd>
+                <dd>5000 turns, resolved after the full last turn executes.</dd>
+              </div>
+              <div>
+                <dt>Turn Order</dt>
+                <dd>Newest cells act first. Ties are decided by lower internal id.</dd>
               </div>
               <div>
                 <dt>Validation</dt>

@@ -31,10 +31,6 @@ export function StatsPanel({ snapshot }: StatsPanelProps) {
                   <dt>Living Cells</dt>
                   <dd>{stats.livingCells.toLocaleString()}</dd>
                 </div>
-                <div>
-                  <dt>Total Health</dt>
-                  <dd>{stats.totalHealth.toLocaleString()}</dd>
-                </div>
               </dl>
             </section>
           );

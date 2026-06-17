@@ -1,6 +1,8 @@
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
+import { ALGORITHM_TEMPLATES } from "../game/algorithmTemplates";
 import { TEAM_COLORS } from "../game/constants";
 import type { PlayerDraft, TeamId } from "../game/types";
+import { AlgorithmDictionary } from "./AlgorithmDictionary";
 import { CodeEditor } from "./CodeEditor";
 
 interface PlayerConfigPanelProps {
@@ -21,6 +23,7 @@ export function PlayerConfigPanel({
   const isValid = player.validation.status === "valid";
   const isInvalid = player.validation.status === "invalid";
   const isValidating = player.validation.status === "validating";
+  const [isDictionaryOpen, setIsDictionaryOpen] = useState(false);
 
   return (
     <section className={`panel player-panel player-panel--${accentClassName}`}>
@@ -60,6 +63,29 @@ export function PlayerConfigPanel({
 
         <div className="field">
           <span className="field__label">Algorithm</span>
+          <div className="template-toolbar">
+            {ALGORITHM_TEMPLATES.map((template) => (
+              <button
+                key={template.id}
+                type="button"
+                className="template-pill"
+                title={template.description}
+                onClick={() =>
+                  onUpdatePlayer(player.id, { algorithmSource: template.source })
+                }
+              >
+                {template.label}
+              </button>
+            ))}
+            <button
+              type="button"
+              className="template-pill template-pill--accent"
+              onClick={() => setIsDictionaryOpen((current) => !current)}
+            >
+              {isDictionaryOpen ? "Hide Dictionary" : "Dictionary"}
+            </button>
+          </div>
+          {isDictionaryOpen ? <AlgorithmDictionary /> : null}
           <CodeEditor
             value={player.algorithmSource}
             onChange={(algorithmSource) =>

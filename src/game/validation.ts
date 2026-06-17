@@ -12,9 +12,7 @@ const workerUrl = new URL("./algorithmWorker.ts", import.meta.url);
 const ACTION_SET = new Set<ActionCode>(ACTION_CODES);
 
 const SAMPLE_CONTEXT: CellContext = {
-  health: 60,
   position: { row: 50, col: 50 },
-  teamTotalHealth: 120,
   currentTurn: 1,
   boardSize: { rows: 100, cols: 200 },
   neighbors: {
@@ -404,6 +402,16 @@ async function probeWithWorker(normalizedSource: string): Promise<void> {
         context: SAMPLE_CONTEXT,
       });
     });
+  } catch (workerError) {
+    try {
+      probeAlgorithmExecution(normalizedSource);
+    } catch (probeError) {
+      throw probeError instanceof Error
+        ? probeError
+        : workerError instanceof Error
+          ? workerError
+          : new Error("Validation failed.");
+    }
   } finally {
     worker.terminate();
   }

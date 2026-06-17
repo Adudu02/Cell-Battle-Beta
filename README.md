@@ -36,26 +36,25 @@ pnpm test
 - There are two local players only.
 - Each team starts with one living cell.
 - Each cell can perform exactly one action per turn.
+- Cells do not auto-attack when blocked. Combat only happens if the algorithm explicitly returns an `a...` action.
+- Autoplay advances on a frame-driven cadence for smoother visual updates.
 - Turn order is deterministic:
   - cells alive at the start of the turn
-  - then by creation turn
-  - then by start-of-turn row
-  - then by start-of-turn column
-  - then by internal id
+  - then by newest creation turn first
+  - then by lower internal id
 - Turn limit defaults to `5000`.
 - The final turn-limit winner is decided by:
   1. living cells
-  2. total health
-  3. draw if still tied
+  2. draw if still tied
 
 ## Cell Rules
 
-- Health ranges from `0` to `100`.
-- A cell at `0` health dies immediately and is removed.
-- `Rest` heals `3`, capped at `100`.
-- `Eat` deals `5` damage to one adjacent enemy cell.
-- `Reproduce` splits the acting cell's health between parent and child.
-- In this implementation the starting health is `60` because the provided `Prompt.txt` did not define an initial value from the missing PDF.
+- Cells no longer track variable health.
+- Every living cell is effectively `1 hp`.
+- `Eat` instantly eliminates one adjacent enemy cell.
+- If `Eat` kills the target, the attacker advances into that square.
+- `Reproduce` creates one new allied cell in an empty neighboring square.
+- The match can also be ended manually from the simulation screen.
 
 ## Valid Action Codes
 
@@ -74,10 +73,6 @@ pnpm test
 - `rn`, `rs`, `re`, `rw`
 - `rne`, `rnw`, `rse`, `rsw`
 
-### Rest
-
-- `d`
-
 ## Example Algorithm
 
 ```ts
@@ -90,7 +85,7 @@ function decide(context) {
     return "me";
   }
 
-  return "d";
+  return "mn";
 }
 ```
 

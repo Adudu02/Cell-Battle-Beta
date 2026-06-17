@@ -226,6 +226,64 @@ textarea {
   outline: none;
 }
 
+.template-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.template-pill {
+  border: 1px solid rgba(117, 152, 182, 0.24);
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.template-pill:hover {
+  color: var(--text);
+  border-color: rgba(26, 209, 234, 0.44);
+}
+
+.template-pill--accent {
+  color: var(--text);
+  border-color: rgba(26, 209, 234, 0.34);
+  background: rgba(26, 209, 234, 0.12);
+}
+
+.dictionary-card {
+  display: grid;
+  gap: 14px;
+  border: 1px solid rgba(117, 152, 182, 0.18);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.03);
+  padding: 16px;
+}
+
+.dictionary-card strong {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.dictionary-card ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+}
+
+.dictionary-card__code {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(3, 10, 17, 0.9);
+  color: var(--text);
+  font-family: Consolas, "Cascadia Code", monospace;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  overflow-x: auto;
+}
+
 .action-button {
   border: 1px solid rgba(103, 152, 188, 0.34);
   border-radius: 14px;
@@ -448,8 +506,24 @@ textarea {
 
 .board-canvas {
   display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.board-canvas-stack {
+  position: relative;
   aspect-ratio: 2 / 1;
   background: #050a10;
+}
+
+.board-canvas--grid,
+.board-canvas--cells {
+  position: absolute;
+  inset: 0;
+}
+
+.board-canvas--cells {
+  pointer-events: none;
 }
 
 .controls-row {

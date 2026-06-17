@@ -1,4 +1,3 @@
-import { useDeferredValue } from "react";
 import type { SimulationSnapshot } from "../game/types";
 import { BoardCanvas } from "./BoardCanvas";
 import { ErrorPanel } from "./ErrorPanel";
@@ -7,30 +6,20 @@ import { StatsPanel } from "./StatsPanel";
 interface SimulationScreenProps {
   snapshot: SimulationSnapshot;
   isAutoPlaying: boolean;
-  speedMs: number;
   onPlay: () => void;
   onPause: () => void;
   onStepTurn: () => void;
-  onSpeedChange: (speedMs: number) => void;
+  onEndMatch: () => void;
 }
-
-const SPEED_OPTIONS = [
-  { label: "1x", value: 260 },
-  { label: "2x", value: 160 },
-  { label: "4x", value: 90 },
-];
 
 export function SimulationScreen({
   snapshot,
   isAutoPlaying,
-  speedMs,
   onPlay,
   onPause,
   onStepTurn,
-  onSpeedChange,
+  onEndMatch,
 }: SimulationScreenProps) {
-  const deferredCells = useDeferredValue(snapshot.cells);
-
   return (
     <main className="screen screen--simulation">
       <header className="simulation-header panel">
@@ -44,7 +33,10 @@ export function SimulationScreen({
       <section className="simulation-layout">
         <StatsPanel snapshot={snapshot} />
         <section className="panel board-panel">
-          <BoardCanvas cells={deferredCells} />
+          <BoardCanvas
+            cells={snapshot.cells}
+            boardPatch={snapshot.boardPatch}
+          />
           <div className="controls-row">
             <button
               type="button"
@@ -60,18 +52,13 @@ export function SimulationScreen({
             >
               Step Turn
             </button>
-            <div className="speed-picker" role="group" aria-label="Simulation speed">
-              {SPEED_OPTIONS.map((option) => (
-                <button
-                  key={option.label}
-                  type="button"
-                  className={`speed-pill${speedMs === option.value ? " speed-pill--active" : ""}`}
-                  onClick={() => onSpeedChange(option.value)}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
+            <button
+              type="button"
+              className="action-button action-button--secondary"
+              onClick={onEndMatch}
+            >
+              End Match
+            </button>
           </div>
         </section>
         <ErrorPanel errors={snapshot.errors} />

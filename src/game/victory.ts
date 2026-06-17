@@ -18,10 +18,6 @@ function buildResult(
       p1: state.teamStats.p1.livingCells,
       p2: state.teamStats.p2.livingCells,
     },
-    totalHealthByTeam: {
-      p1: state.teamStats.p1.totalHealth,
-      p2: state.teamStats.p2.totalHealth,
-    },
   };
 }
 
@@ -69,22 +65,31 @@ export function evaluateVictory(state: InternalGameState): MatchResult | null {
     );
   }
 
-  const p1Health = state.teamStats.p1.totalHealth;
-  const p2Health = state.teamStats.p2.totalHealth;
+  return buildResult(
+    state,
+    null,
+    "turn-limit",
+    "Turn limit reached with tied living cell counts.",
+  );
+}
 
-  if (p1Health !== p2Health) {
+export function createManualResult(state: InternalGameState): MatchResult {
+  const p1Living = state.teamStats.p1.livingCells;
+  const p2Living = state.teamStats.p2.livingCells;
+
+  if (p1Living !== p2Living) {
     return buildResult(
       state,
-      p1Health > p2Health ? "p1" : "p2",
-      "turn-limit",
-      "Turn limit reached. Winner decided by total health.",
+      p1Living > p2Living ? "p1" : "p2",
+      "manual",
+      "Match ended manually. Winner decided by living cell count.",
     );
   }
 
   return buildResult(
     state,
     null,
-    "turn-limit",
-    "Turn limit reached with tied living cells and tied total health.",
+    "manual",
+    "Match ended manually with tied living cell counts.",
   );
 }

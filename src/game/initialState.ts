@@ -1,7 +1,14 @@
 import {
-  BOARD_COLS, BOARD_ROWS, DEFAULT_TURN_LIMIT, INITIAL_HEALTH,
+  BOARD_COLS, BOARD_ROWS, DEFAULT_TURN_LIMIT,
 } from "./constants";
-import type { Cell, MatchResult, PlayerConfig, TeamId, TeamStats } from "./types";
+import type {
+  BoardCellPatch,
+  Cell,
+  MatchResult,
+  PlayerConfig,
+  TeamId,
+  TeamStats,
+} from "./types";
 
 export interface InternalGameState {
   players: Record<TeamId, PlayerConfig>;
@@ -9,9 +16,13 @@ export interface InternalGameState {
   turnLimit: number;
   cellsById: Map<number, Cell>;
   aliveCells: Set<number>;
+  cellsByCreatedTurn: Map<number, number[]>;
+  createdTurnGroups: number[];
   occupancy: Int32Array;
   teamStats: Record<TeamId, TeamStats>;
   nextCellId: number;
+  pendingBoardChanges: Map<number, BoardCellPatch>;
+  boardFullSyncPending: boolean;
   errors: {
     turn: number;
     teamId: TeamId;
@@ -27,19 +38,31 @@ function boardIndex(row: number, col: number): number {
   return row * BOARD_COLS + col;
 }
 
-export function createInitialState(
+function randomInt(min: number, max: number, rng: () => number): number {
+  return min + Math.floor(rng() * (max - min + 1));
+}
+
+function createRandomStartingCells(
   players: Record<TeamId, PlayerConfig>,
-): InternalGameState {
-  const occupancy = new Int32Array(BOARD_ROWS * BOARD_COLS).fill(-1);
-  const cellsById = new Map<number, Cell>();
+  rng: () => number,
+): [Cell, Cell] {
+  const leftMinCol = 8;
+  const leftMaxCol = Math.max(leftMinCol, Math.floor(BOARD_COLS * 0.2));
+  const rightMinCol = Math.min(
+    BOARD_COLS - 9,
+    Math.max(leftMaxCol + 20, Math.floor(BOARD_COLS * 0.8)),
+  );
+  const rightMaxCol = BOARD_COLS - 9;
 
   const p1Cell: Cell = {
     id: 1,
     teamId: "p1",
     teamName: players.p1.teamName,
     teamColor: players.p1.teamColor,
-    position: { row: Math.floor(BOARD_ROWS / 2), col: 24 },
-    health: INITIAL_HEALTH,
+    position: {
+      row: randomInt(8, BOARD_ROWS - 9, rng),
+      col: randomInt(leftMinCol, leftMaxCol, rng),
+    },
     alive: true,
     createdTurn: 0,
   };
@@ -49,11 +72,24 @@ export function createInitialState(
     teamId: "p2",
     teamName: players.p2.teamName,
     teamColor: players.p2.teamColor,
-    position: { row: Math.floor(BOARD_ROWS / 2), col: BOARD_COLS - 25 },
-    health: INITIAL_HEALTH,
+    position: {
+      row: randomInt(8, BOARD_ROWS - 9, rng),
+      col: randomInt(rightMinCol, rightMaxCol, rng),
+    },
     alive: true,
     createdTurn: 0,
   };
+
+  return [p1Cell, p2Cell];
+}
+
+export function createInitialState(
+  players: Record<TeamId, PlayerConfig>,
+  rng: () => number = Math.random,
+): InternalGameState {
+  const occupancy = new Int32Array(BOARD_ROWS * BOARD_COLS).fill(-1);
+  const cellsById = new Map<number, Cell>();
+  const [p1Cell, p2Cell] = createRandomStartingCells(players, rng);
 
   cellsById.set(p1Cell.id, p1Cell);
   cellsById.set(p2Cell.id, p2Cell);
@@ -67,12 +103,16 @@ export function createInitialState(
     turnLimit: DEFAULT_TURN_LIMIT,
     cellsById,
     aliveCells: new Set([p1Cell.id, p2Cell.id]),
+    cellsByCreatedTurn: new Map([[0, [p1Cell.id, p2Cell.id]]]),
+    createdTurnGroups: [0],
     occupancy,
     teamStats: {
-      p1: { livingCells: 1, totalHealth: INITIAL_HEALTH },
-      p2: { livingCells: 1, totalHealth: INITIAL_HEALTH },
+      p1: { livingCells: 1 },
+      p2: { livingCells: 1 },
     },
     nextCellId: 3,
+    pendingBoardChanges: new Map(),
+    boardFullSyncPending: true,
     errors: [],
     errorOverflowed: false,
     result: null,

@@ -1,71 +1,126 @@
 import { useEffect, useRef } from "react";
-import type { Cell } from "../game/types";
+import type { BoardPatch, Cell } from "../game/types";
 
 interface BoardCanvasProps {
   cells: Cell[];
+  boardPatch: BoardPatch;
 }
 
 const CANVAS_WIDTH = 1200;
 const CANVAS_HEIGHT = 600;
 const CELL_SIZE = 6;
 
-export function BoardCanvas({ cells }: BoardCanvasProps) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const gridCacheRef = useRef<HTMLCanvasElement | null>(null);
+function configureCanvas(canvas: HTMLCanvasElement, dpr: number): CanvasRenderingContext2D | null {
+  canvas.width = CANVAS_WIDTH * dpr;
+  canvas.height = CANVAS_HEIGHT * dpr;
+  const context = canvas.getContext("2d");
+  if (!context) {
+    return null;
+  }
+
+  context.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return context;
+}
+
+function drawGrid(context: CanvasRenderingContext2D): void {
+  context.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+  context.fillStyle = "#050a10";
+  context.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+  context.strokeStyle = "rgba(145, 170, 190, 0.12)";
+  context.lineWidth = 1;
+
+  for (let x = 0; x <= CANVAS_WIDTH; x += CELL_SIZE) {
+    context.beginPath();
+    context.moveTo(x + 0.5, 0);
+    context.lineTo(x + 0.5, CANVAS_HEIGHT);
+    context.stroke();
+  }
+
+  for (let y = 0; y <= CANVAS_HEIGHT; y += CELL_SIZE) {
+    context.beginPath();
+    context.moveTo(0, y + 0.5);
+    context.lineTo(CANVAS_WIDTH, y + 0.5);
+    context.stroke();
+  }
+}
+
+function clearBoardCell(
+  context: CanvasRenderingContext2D,
+  row: number,
+  col: number,
+): void {
+  context.clearRect(col * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+}
+
+function drawBoardCell(
+  context: CanvasRenderingContext2D,
+  row: number,
+  col: number,
+  color: string,
+): void {
+  context.fillStyle = color;
+  context.fillRect(
+    col * CELL_SIZE + 1,
+    row * CELL_SIZE + 1,
+    CELL_SIZE - 2,
+    CELL_SIZE - 2,
+  );
+}
+
+export function BoardCanvas({ cells, boardPatch }: BoardCanvasProps) {
+  const gridCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const cellsCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const initializedRef = useRef(false);
+  const dprRef = useRef(0);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const context = canvas.getContext("2d");
-    if (!context) return;
+    const gridCanvas = gridCanvasRef.current;
+    const cellsCanvas = cellsCanvasRef.current;
+    if (!gridCanvas || !cellsCanvas) {
+      return;
+    }
 
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = CANVAS_WIDTH * dpr;
-    canvas.height = CANVAS_HEIGHT * dpr;
-    context.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const needsResize =
+      dprRef.current !== dpr ||
+      gridCanvas.width !== CANVAS_WIDTH * dpr ||
+      gridCanvas.height !== CANVAS_HEIGHT * dpr;
 
-    // Draw cached grid once
-    if (!gridCacheRef.current) {
-      const offscreen = document.createElement("canvas");
-      offscreen.width = CANVAS_WIDTH * dpr;
-      offscreen.height = CANVAS_HEIGHT * dpr;
-      const oc = offscreen.getContext("2d")!;
-      oc.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-      oc.fillStyle = "#050a10";
-      oc.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
-      oc.strokeStyle = "rgba(145, 170, 190, 0.12)";
-      oc.lineWidth = 1;
-      for (let x = 0; x <= CANVAS_WIDTH; x += CELL_SIZE) {
-        oc.beginPath();
-        oc.moveTo(x + 0.5, 0);
-        oc.lineTo(x + 0.5, CANVAS_HEIGHT);
-        oc.stroke();
-      }
-      for (let y = 0; y <= CANVAS_HEIGHT; y += CELL_SIZE) {
-        oc.beginPath();
-        oc.moveTo(0, y + 0.5);
-        oc.lineTo(CANVAS_WIDTH, y + 0.5);
-        oc.stroke();
-      }
-
-      gridCacheRef.current = offscreen;
+    const gridContext = needsResize ? configureCanvas(gridCanvas, dpr) : gridCanvas.getContext("2d");
+    const cellsContext = needsResize ? configureCanvas(cellsCanvas, dpr) : cellsCanvas.getContext("2d");
+    if (!gridContext || !cellsContext) {
+      return;
     }
 
-    context.drawImage(gridCacheRef.current, 0, 0);
-
-    for (const cell of cells) {
-      context.fillStyle = cell.teamColor;
-      context.fillRect(
-        cell.position.col * CELL_SIZE + 1,
-        cell.position.row * CELL_SIZE + 1,
-        CELL_SIZE - 2,
-        CELL_SIZE - 2,
-      );
+    if (needsResize) {
+      dprRef.current = dpr;
+      drawGrid(gridContext);
+      initializedRef.current = false;
     }
-  }, [cells]);
+
+    // Full sync repaints only the dynamic layer; later turns patch changed squares.
+    if (!initializedRef.current || boardPatch.fullSync) {
+      cellsContext.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+      for (const cell of cells) {
+        drawBoardCell(
+          cellsContext,
+          cell.position.row,
+          cell.position.col,
+          cell.teamColor,
+        );
+      }
+      initializedRef.current = true;
+      return;
+    }
+
+    for (const change of boardPatch.changes) {
+      clearBoardCell(cellsContext, change.row, change.col);
+      if (change.color) {
+        drawBoardCell(cellsContext, change.row, change.col, change.color);
+      }
+    }
+  }, [boardPatch, cells]);
 
   return (
     <div className="board-frame">
@@ -73,11 +128,18 @@ export function BoardCanvas({ cells }: BoardCanvasProps) {
         <span>100 x 200 board</span>
         <span>Canvas render</span>
       </div>
-      <canvas
-        ref={canvasRef}
-        className="board-canvas"
-        style={{ width: "100%", height: "auto" }}
-      />
+      <div className="board-canvas-stack">
+        <canvas
+          ref={gridCanvasRef}
+          className="board-canvas board-canvas--grid"
+          style={{ width: "100%", height: "auto" }}
+        />
+        <canvas
+          ref={cellsCanvasRef}
+          className="board-canvas board-canvas--cells"
+          style={{ width: "100%", height: "auto" }}
+        />
+      </div>
     </div>
   );
 }
