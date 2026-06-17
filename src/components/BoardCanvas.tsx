@@ -4,13 +4,16 @@ import type { BoardPatch, Cell } from "../game/types";
 interface BoardCanvasProps {
   cells?: Cell[];
   boardPatch: BoardPatch;
+  occupiedCount: number;
 }
 
 const CANVAS_WIDTH = 1200;
 const CANVAS_HEIGHT = 600;
 const CELL_SIZE = 6;
+const CELL_INSET = 1;
 const BOARD_BACKGROUND = "#08111a";
 const GRID_STROKE = "rgba(145, 170, 190, 0.05)";
+const TOTAL_SQUARES = 100 * 200;
 
 function configureCanvas(canvas: HTMLCanvasElement, dpr: number): CanvasRenderingContext2D | null {
   canvas.width = CANVAS_WIDTH * dpr;
@@ -63,18 +66,19 @@ function drawBoardCell(
 ): void {
   context.fillStyle = color;
   context.fillRect(
-    col * CELL_SIZE,
-    row * CELL_SIZE,
-    CELL_SIZE,
-    CELL_SIZE,
+    col * CELL_SIZE + CELL_INSET,
+    row * CELL_SIZE + CELL_INSET,
+    CELL_SIZE - CELL_INSET * 2,
+    CELL_SIZE - CELL_INSET * 2,
   );
 }
 
-export function BoardCanvas({ cells, boardPatch }: BoardCanvasProps) {
+export function BoardCanvas({ cells, boardPatch, occupiedCount }: BoardCanvasProps) {
   const gridCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const cellsCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const initializedRef = useRef(false);
   const dprRef = useRef(0);
+  const occupiedPercent = ((occupiedCount / TOTAL_SQUARES) * 100).toFixed(1);
 
   useEffect(() => {
     const gridCanvas = gridCanvasRef.current;
@@ -128,6 +132,7 @@ export function BoardCanvas({ cells, boardPatch }: BoardCanvasProps) {
     <div className="board-frame">
       <div className="board-frame__meta">
         <span>100 x 200 board</span>
+        <span>{occupiedCount.toLocaleString()} occupied ({occupiedPercent}%)</span>
         <span>Canvas render</span>
       </div>
       <div className="board-canvas-stack">

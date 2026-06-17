@@ -20,6 +20,9 @@ export function SimulationScreen({
   onStepTurn,
   onEndMatch,
 }: SimulationScreenProps) {
+  const occupiedCount =
+    snapshot.stats.p1.livingCells + snapshot.stats.p2.livingCells;
+
   return (
     <main className="screen screen--simulation">
       <header className="simulation-header panel">
@@ -36,6 +39,7 @@ export function SimulationScreen({
           <BoardCanvas
             cells={snapshot.cells}
             boardPatch={snapshot.boardPatch}
+            occupiedCount={occupiedCount}
           />
           <div className="controls-row">
             <button

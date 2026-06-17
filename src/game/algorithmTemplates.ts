@@ -60,6 +60,64 @@ export const ALGORITHM_TEMPLATES: AlgorithmTemplate[] = [
 }`,
   },
   {
+    id: "marching-bloom",
+    label: "Marching Bloom",
+    description:
+      "Splits the colony into breeder and mover lanes so expansion and movement happen together.",
+    source: `function decide(context) {
+  const pushEast = context.position.col < context.boardSize.cols / 2;
+  const growthPhase =
+    (context.position.row + context.position.col + context.currentTurn) % 2 === 0;
+
+  if (pushEast) {
+    if (context.neighbors.east === "enemy") return "ae";
+    if (context.neighbors.northeast === "enemy") return "ane";
+    if (context.neighbors.southeast === "enemy") return "ase";
+  } else {
+    if (context.neighbors.west === "enemy") return "aw";
+    if (context.neighbors.northwest === "enemy") return "anw";
+    if (context.neighbors.southwest === "enemy") return "asw";
+  }
+
+  if (context.neighbors.north === "enemy") return "an";
+  if (context.neighbors.south === "enemy") return "as";
+
+  if (growthPhase) {
+    if (pushEast) {
+      if (context.neighbors.east === "empty") return "re";
+      if (context.neighbors.northeast === "empty") return "rne";
+      if (context.neighbors.southeast === "empty") return "rse";
+    } else {
+      if (context.neighbors.west === "empty") return "rw";
+      if (context.neighbors.northwest === "empty") return "rnw";
+      if (context.neighbors.southwest === "empty") return "rsw";
+    }
+
+    if (context.neighbors.north === "empty") return "rn";
+    if (context.neighbors.south === "empty") return "rs";
+  }
+
+  if (pushEast) {
+    if (context.neighbors.east === "empty") return "me";
+    if (context.neighbors.northeast === "empty") return "mne";
+    if (context.neighbors.southeast === "empty") return "mse";
+  } else {
+    if (context.neighbors.west === "empty") return "mw";
+    if (context.neighbors.northwest === "empty") return "mnw";
+    if (context.neighbors.southwest === "empty") return "msw";
+  }
+
+  if (context.neighbors.north === "empty") return "mn";
+  if (context.neighbors.south === "empty") return "ms";
+
+  if (pushEast && context.neighbors.west === "empty") return "rw";
+  if (!pushEast && context.neighbors.east === "empty") return "re";
+
+  if (pushEast) return "mw";
+  return "me";
+}`,
+  },
+  {
     id: "stress",
     label: "Stress",
     description: "Attack first and rotate expansion lanes to keep load tests dense.",

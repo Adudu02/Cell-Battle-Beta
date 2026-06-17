@@ -194,6 +194,56 @@ describe("combat resolution", () => {
 });
 
 describe("algorithm templates", () => {
+  test("marching bloom mixes reproduction and movement across cells in the same turn", () => {
+    const marchingBloomTemplate = ALGORITHM_TEMPLATES.find(
+      (template) => template.id === "marching-bloom",
+    );
+    expect(marchingBloomTemplate).toBeDefined();
+
+    const runner = createAlgorithmRunner(marchingBloomTemplate!.source);
+    const breederAction = runner({
+      position: { row: 20, col: 30 },
+      currentTurn: 10,
+      boardSize: { rows: 100, cols: 200 },
+      neighbors: {
+        north: "allied",
+        south: "empty",
+        east: "empty",
+        west: "allied",
+        northeast: "empty",
+        northwest: "allied",
+        southeast: "empty",
+        southwest: "allied",
+      },
+      nearbyAllies: ["north", "west", "northwest", "southwest"],
+      nearbyEnemies: [],
+      hasNearbyAllies: true,
+      hasNearbyEnemies: false,
+    });
+    const moverAction = runner({
+      position: { row: 21, col: 30 },
+      currentTurn: 10,
+      boardSize: { rows: 100, cols: 200 },
+      neighbors: {
+        north: "allied",
+        south: "empty",
+        east: "empty",
+        west: "allied",
+        northeast: "empty",
+        northwest: "allied",
+        southeast: "empty",
+        southwest: "allied",
+      },
+      nearbyAllies: ["north", "west", "northwest", "southwest"],
+      nearbyEnemies: [],
+      hasNearbyAllies: true,
+      hasNearbyEnemies: false,
+    });
+
+    expect(breederAction).toBe("re");
+    expect(moverAction).toBe("me");
+  });
+
   test("stress template attacks before further expansion", () => {
     const stressTemplate = ALGORITHM_TEMPLATES.find((template) => template.id === "stress");
     expect(stressTemplate).toBeDefined();

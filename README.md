@@ -89,6 +89,12 @@ function decide(context) {
 }
 ```
 
+## Mixed Move + Reproduce Strategy
+
+One cell still gets only one action per turn, but a colony can move and reproduce in the same global turn by giving different cells different roles.
+
+Use the `Marching Bloom` template in the UI for that pattern. It alternates breeder lanes and mover lanes, so part of the colony expands while the rest keeps advancing.
+
 ## Safety Model
 
 - Validation rejects loops, imports, dangerous APIs, nested functions, and non-literal action returns.
